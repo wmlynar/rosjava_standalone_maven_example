@@ -16,6 +16,7 @@
 
 package org.ros.rosjava_tutorial_services;
 
+import org.apache.commons.logging.Log;
 import org.ros.exception.RemoteException;
 import org.ros.exception.RosRuntimeException;
 import org.ros.exception.ServiceNotFoundException;
@@ -39,11 +40,18 @@ public class Client extends AbstractNodeMain {
 
 	@Override
 	public void onStart(final ConnectedNode connectedNode) {
-		ServiceClient<rosjava_test_msgs.AddTwoIntsRequest, rosjava_test_msgs.AddTwoIntsResponse> serviceClient;
-		try {
-			serviceClient = connectedNode.newServiceClient("add_two_ints", rosjava_test_msgs.AddTwoInts._TYPE);
-		} catch (ServiceNotFoundException e) {
-			throw new RosRuntimeException(e);
+		final Log log = connectedNode.getLog();
+		ServiceClient<rosjava_test_msgs.AddTwoIntsRequest, rosjava_test_msgs.AddTwoIntsResponse> serviceClient = null;
+		while(serviceClient == null) {
+			try {
+				serviceClient = connectedNode.newServiceClient("add_two_ints", rosjava_test_msgs.AddTwoInts._TYPE);
+			} catch (ServiceNotFoundException e) {
+				log.info("service not found");
+				try {
+					Thread.sleep(1000);
+				} catch (InterruptedException e1) {
+				}
+			}
 		}
 		final rosjava_test_msgs.AddTwoIntsRequest request = serviceClient.newMessage();
 		request.setA(2);
