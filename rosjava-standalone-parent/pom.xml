@@ -8,6 +8,16 @@
 		<project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
 		<maven.compiler.source>1.8</maven.compiler.source>
 		<maven.compiler.target>1.8</maven.compiler.target>
+
+		<!-- jar parameters -->
+		<main.class>org.ros.rosjava_tutorial_pubsub.PubSubExampleWithCore</main.class>
+
+		<!-- raspberry pi parameters -->
+		<pi.host>192.168.1.20</pi.host>
+		<pi.port>22</pi.port>
+		<pi.user>pi</pi.user>
+		<pi.password>raspberry</pi.password>
+		<pi.deployDirectory>/home/pi/java</pi.deployDirectory>
 	</properties>
 	<dependencies>
 		<!-- roscore dependencies -->
@@ -81,7 +91,7 @@
 				<configuration>
 					<archive>
 						<manifest>
-							<mainClass>org.ros.rosjava_tutorial_pubsub.PubSubExampleWithCore</mainClass>
+							<mainClass>${main.class}</mainClass>
 						</manifest>
 					</archive>
 					<descriptorRefs>
@@ -97,6 +107,57 @@
 						</goals>
 					</execution>
 				</executions>
+			</plugin>
+			<!-- deploy file to raspberry pi -->
+			<!-- https://stackoverflow.com/questions/35148025/how-to-deploy-a-jar-onto-raspberry-pi-2-using-maven-plugin -->
+			<!-- http://artem.gratchev.com/2015/03/java-application-jar-raspberry-pi-maven-eclipse/ -->
+			<plugin>
+				<groupId>org.apache.maven.plugins</groupId>
+				<artifactId>maven-antrun-plugin</artifactId>
+				<version>1.8</version>
+				<executions>
+					<execution>
+						<phase>install</phase>
+						<goals>
+							<goal>run</goal>
+						</goals>
+						<configuration>
+							<target>
+								<echo message="Shuting down remote application" />
+								<sshexec host="${pi.host}" port="${pi.port}" username="${pi.user}"
+									password="${pi.password}" trust="true" failonerror="false"
+									verbose="true" command="pkill java" />
+
+								<echo message="Ensuring the target directory exists on the Raspberry Pi" />
+								<sshexec host="${pi.host}" port="${pi.port}" username="${pi.user}"
+									password="${pi.password}" trust="true" failonerror="false"
+									verbose="true" command="mkdir --parents ${pi.deployDirectory}" />
+
+								<echo
+									message="Copying the JAR file to the Raspberry" />
+								<scp
+									file="${project.build.directory}/${project.build.finalName}-jar-with-dependencies.jar"
+									todir="${pi.user}:${pi.password}@${pi.host}:${pi.deployDirectory}"
+									port="${pi.port}" trust="true" verbose="true" failonerror="true">
+								</scp>
+
+								<echo
+									message="Running the JAR file on the Raspberry Pi" />
+								<sshexec host="${pi.host}" port="${pi.port}" username="${pi.user}"
+									password="${pi.password}" trust="true" failonerror="false"
+									verbose="true"
+									command="export DISPLAY=:0.0;java -jar ${pi.deployDirectory}/${project.build.finalName}-jar-with-dependencies.jar >/dev/null 2>&amp;1 &amp; echo $!" />
+							</target>
+						</configuration>
+					</execution>
+				</executions>
+				<dependencies>
+					<dependency>
+						<groupId>org.apache.ant</groupId>
+						<artifactId>ant-jsch</artifactId>
+						<version>1.9.6</version>
+					</dependency>
+				</dependencies>
 			</plugin>
 		</plugins>
 	</build>
